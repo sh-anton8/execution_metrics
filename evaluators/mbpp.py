@@ -11,6 +11,33 @@ from tqdm import tqdm
 import re
 import ast
 import numpy as np
+import re
+
+def extract_prefix_before_solution(code: str) -> str:
+    lines = code.strip().split('\n')
+    result_lines = []
+    found_main_func = False
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+
+        # Match top-level function definitions
+        if re.match(r'^def\s+\w+\s*\(.*\)\s*:', line):
+            result_lines.append(line)
+            break
+
+        # Match import lines or class definitions or docstrings
+        if (stripped.startswith("import") or
+            stripped.startswith("from") or
+            stripped.startswith("class") or
+            stripped.startswith("def") or
+            stripped.startswith('"""') or
+            stripped.startswith("'''") or
+            len(result_lines) > 0):  # capture body of classes/functions
+
+            result_lines.append(line)
+
+    return '\n'.join(result_lines)
 
 class MBPPEvaluator:
     def __init__(self, api_url: str = "http://localhost:1337/execute"):
@@ -123,4 +150,14 @@ class MBPPEvaluator:
     def save_report(self, results: Dict[str, Any], output_file: str):
         """Save the evaluation results to a JSON file."""
         with open(output_file, 'w') as f:
-            json.dump(results, f, indent=2) 
+            json.dump(results, f, indent=2)
+
+    def get_problem_descriptions(self) -> Dict[str, str]:
+        """Retrieve problem descriptions from the dataset."""
+        descriptions = {}
+        for item in self.dataset['test']:
+            item_description = {}
+            item_description['problem_description'] = item['text']
+            item_description['starter_code'] = extract_prefix_before_solution(item['code'])
+            descriptions[item['task_id']] = item_description
+        return descriptions 
