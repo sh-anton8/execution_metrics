@@ -31,7 +31,7 @@ class ExecutionResponse(BaseModel):
 class CodeExecutionRequest(BaseModel):
     code: str
     tests: List[str]
-    timeout: int = Field(default=20, ge=1, le=30)
+    timeout: int = Field(default=20, ge=1, le=100)
 
 def run_code_and_tests(code: str, tests: List[str], shared_dict, timeout: int):
     results = []
@@ -189,4 +189,9 @@ async def execute_code(request: CodeExecutionRequest):
         raise HTTPException(status_code=400, detail="No code provided")
     if not request.tests:
         raise HTTPException(status_code=400, detail="No tests provided")
-    return execute_with_timeout(request.code, request.tests, request.timeout)
+    try:
+        return execute_with_timeout(request.code, request.tests, request.timeout)
+    except Exception as e:
+        # Log the error and return a generic error response
+        print(f"Unexpected error during execution: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
