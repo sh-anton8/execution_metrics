@@ -12,6 +12,7 @@ import re
 import ast
 import numpy as np
 import re
+from requests.exceptions import ConnectionError
 
 def extract_prefix_before_solution(code: str) -> str:
     lines = code.strip().split('\n')
@@ -86,42 +87,60 @@ class MBPPEvaluator:
             all_passed = True
             
             for test_case in task_tests:
-                try:
-                    # Combine solution code and setup code
-                    full_code = f"{code}\n\n{setup_code}"
-                    
-                    response = requests.post(
-                        self.api_url,
-                        json={
-                            "code": full_code,
-                            "tests": [test_case],
-                            "timeout": 5
+                retries = 3
+                while retries > 0:
+                    try:
+                        # Combine solution code and setup code
+                        full_code = f"{code}\n\n{setup_code}"
+                        
+                        response = requests.post(
+                            self.api_url,
+                            json={
+                                "code": full_code,
+                                "tests": [test_case],
+                                "timeout": 90
+                            },
+                            timeout=90  # Set a timeout for the request
+                        )
+                        response.raise_for_status()
+                        result = response.json()
+                        
+                        test_result = {
+                            'test_case': test_case,
+                            'passed': result['verdict'] == "All tests passed",
+                            'error': None if result['verdict'] == "All tests passed" else result['details'][0]['traceback']
                         }
-                    )
-                    response.raise_for_status()
-                    result = response.json()
-                    
-                    test_result = {
-                        'test_case': test_case,
-                        'passed': result['verdict'] == "All tests passed",
-                        'error': None if result['verdict'] == "All tests passed" else result['details'][0]['traceback']
-                    }
-                    
-                    if not test_result['passed']:
-                        all_passed = False
-                        results['error_types'][result['details'][0]['error_type']] += 1
-                    
-                    task_results.append(test_result)
-                    
-                except Exception as e:
-                    print(f"Error evaluating test case for task {task_id}: {str(e)}")
-                    results['error_types']['EvaluationError'] += 1
-                    all_passed = False
-                    task_results.append({
-                        'test_case': test_case,
-                        'passed': False,
-                        'error': str(e)
-                    })
+                        
+                        if not test_result['passed']:
+                            all_passed = False
+                            results['error_types'][result['details'][0]['error_type']] += 1
+                        
+                        task_results.append(test_result)
+                        break  # Exit the retry loop if successful
+                    except ConnectionError:
+                        retries -= 1
+                        if retries == 0:
+                            print(f"Error: Unable to connect to the server for task {task_id} after 3 attempts.")
+                            results['error_types']['ConnectionError'] += 1
+                            task_results.append({
+                                'test_case': test_case,
+                                'passed': False,
+                                'error': 'ConnectionError: Unable to connect to the server after 3 attempts.'
+                            })
+                        else:
+                            print(f"Connection error for task {task_id}. Retrying in 10 seconds...")
+                            time.sleep(10)
+                    except Exception as e:
+                        retries -= 1
+                        if retries == 0:
+                            print(f"Error evaluating test case for task {task_id}: {str(e)}")
+                            results['error_types']['EvaluationError'] += 1
+                            all_passed = False
+                            task_results.append({
+                                'test_case': test_case,
+                                'passed': False,
+                                'error': str(e)
+                            })
             
             # Update task report
             if all_passed:

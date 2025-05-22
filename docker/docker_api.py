@@ -195,3 +195,7 @@ async def execute_code(request: CodeExecutionRequest):
         # Log the error and return a generic error response
         print(f"Unexpected error during execution: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
