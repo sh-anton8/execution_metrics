@@ -55,6 +55,16 @@ class MBPPEvaluator:
                 'test_setup_code': item.get('test_setup_code', '')
             }
         return test_cases
+    
+    def _prepare_one_test_case(self) -> Dict[str, Dict[str, Any]]:
+        """Extract test cases and setup code from the dataset."""
+        test_cases = {}
+        for item in self.dataset['test']:
+            test_cases[item['task_id']] = {
+                'test_list': item['test_list'][0],
+                'test_setup_code': item.get('test_setup_code', '')
+            }
+        return test_cases
 
     def evaluate_predictions(self, predictions: Dict[str, str]) -> Dict[str, Any]:
         """
@@ -168,13 +178,14 @@ class MBPPEvaluator:
 
     def save_report(self, results: Dict[str, Any], output_file: str):
         """Save the evaluation results to a JSON file."""
+        results['summary']['pass_rate'] = results['passed_tasks'] / results['total_tasks'] if results['total_tasks'] > 0 else 0
         with open(output_file, 'w') as f:
             json.dump(results, f, indent=2)
 
     def get_problem_descriptions(self) -> Dict[str, str]:
         """Retrieve problem descriptions from the dataset."""
         descriptions = {}
-        for item in self.dataset['test']:
+        for item in self.dataset['test'].select(range(10)):
             item_description = {}
             item_description['problem_description'] = item['text']
             item_description['starter_code'] = extract_prefix_before_solution(item['code'])

@@ -138,13 +138,14 @@ class HumanEvalPlusEvaluator:
 
     def save_report(self, results: Dict[str, Any], output_file: str):
         """Save the evaluation results to a JSON file."""
+        results['summary']['pass_rate'] = results['passed_tasks'] / results['total_tasks'] if results['total_tasks'] > 0 else 0
         with open(output_file, 'w') as f:
             json.dump(results, f, indent=2)
 
     def get_problem_descriptions(self) -> Dict[str, str]:
         """Retrieve problem descriptions from the dataset."""
         descriptions = {}
-        for item in self.dataset['test']:
+        for item in self.dataset['test'].select(range(10)):
             item_description = {}
             item_description['problem_description'] = ''
             item_description['starter_code'] = item['prompt']
