@@ -145,7 +145,7 @@ class HumanEvalPlusEvaluator:
     def get_problem_descriptions(self) -> Dict[str, str]:
         """Retrieve problem descriptions from the dataset."""
         descriptions = {}
-        for item in self.dataset['test'].select(range(10)):
+        for item in self.dataset['test']: #.select(range(10)):
             item_description = {}
             item_description['problem_description'] = ''
             item_description['starter_code'] = item['prompt']

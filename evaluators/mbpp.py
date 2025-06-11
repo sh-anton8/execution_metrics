@@ -185,7 +185,7 @@ class MBPPEvaluator:
     def get_problem_descriptions(self) -> Dict[str, str]:
         """Retrieve problem descriptions from the dataset."""
         descriptions = {}
-        for item in self.dataset['test'].select(range(10)):
+        for item in self.dataset['test']: #.select(range(10)):
             item_description = {}
             item_description['problem_description'] = item['text']
             item_description['starter_code'] = extract_prefix_before_solution(item['code'])
